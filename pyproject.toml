@@ -1,0 +1,64 @@
+[project]
+name = "noctix-engine"
+version = "0.1.0"
+description = "The NOCTIX engine: ingest, verify, act, record, report — unattended back-office automation with verification before money moves"
+requires-python = ">=3.13"
+# Every dependency is a loan the client inherits at handover.
+# Justifications live in DEPENDENCIES.md; exact pins live in uv.lock.
+dependencies = [
+    "pydantic>=2.11",
+    "pdfplumber>=0.11",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "hypothesis>=6.135",
+    "syrupy>=4.8",
+    "pyright>=1.1.400",
+    "ruff>=0.12",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/noctix_engine"]
+
+[tool.pyright]
+include = ["src", "tests", "tools"]
+typeCheckingMode = "strict"
+pythonVersion = "3.13"
+venvPath = "."
+venv = ".venv"
+reportMissingTypeStubs = false   # pdfplumber ships no stubs; its outputs are parsed at the boundary anyway
+
+[tool.ruff]
+target-version = "py313"
+line-length = 88
+src = ["src", "tests", "tools"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "F",      # pycodestyle + pyflakes
+    "I",                # import order
+    "UP",               # modernize
+    "B",                # bugbear
+    "SIM",              # simplify
+    "RET", "RSE",       # return/raise hygiene
+    "DTZ",              # naive-datetime ban: money events carry real timezones
+    "T20",              # no stray print in library code
+]
+ignore = [
+    "E501",             # ruff format owns line length
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["T20"]
+"tools/**" = ["T20"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+xfail_strict = true
