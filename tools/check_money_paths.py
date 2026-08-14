@@ -17,8 +17,11 @@ from pathlib import Path
 MONEY_PATH_ROOTS = (
     Path("src/noctix_engine/money.py"),
     Path("src/noctix_engine/domain.py"),
+    Path("src/noctix_engine/slice.py"),
+    Path("src/noctix_engine/ingest"),
     Path("src/noctix_engine/verify"),
     Path("src/noctix_engine/act"),
+    Path("src/noctix_engine/report"),
 )
 
 

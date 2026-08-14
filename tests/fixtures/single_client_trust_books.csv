@@ -1,0 +1,6 @@
+# NOCTIX trust-books interchange CSV v1
+# as_of=2026-07-31
+# journal_balance=1250.00
+client,date,kind,description,amount
+"Dawes, Elena",2026-07-03,deposit,Retainer received,2000.00
+"Dawes, Elena",2026-07-28,fee_transfer,Invoice 2026-052 earned fees to operating,-750.00

@@ -21,12 +21,21 @@ Design constraints the reader should know:
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 from typing import Final
 
 CENT: Final = Decimal("0.01")
 _SUPPORTED_CURRENCIES: Final = frozenset({"USD"})
+
+# The whole grammar of a document amount: one optional minus before or
+# after one optional dollar sign, then a magnitude whose commas — if
+# present — are honest 3-digit grouping. Anything outside this grammar
+# refuses to parse; "12,34.56" is a typo a human must see, not $1,234.56.
+_DOCUMENT_AMOUNT: Final = re.compile(
+    r"(-)?\$?(-)?((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?)"
+)
 
 
 class MoneyError(ValueError):
@@ -82,28 +91,35 @@ class Money:
     def parse(cls, raw: str, *, currency: str = "USD") -> Money:
         """Parse a document amount: '1,234.56', '$-45.00', '(45.00)', '1200'.
 
-        Accounting parentheses mean negative. Anything ambiguous raises
-        MoneyError with the offending text preserved — the run record
-        needs to show a human exactly what refused to parse.
+        Accounting parentheses mean negative. The grammar is deliberately
+        strict (creed #6): a doubled negation like '--5.00' or '(-5.00)',
+        and misplaced comma grouping like '12,34.56', have no honest
+        reading — they raise MoneyError with the offending text preserved,
+        because the run record needs to show a human exactly what refused
+        to parse.
         """
         text = raw.strip()
         if not text:
             raise MoneyError("empty amount where a currency value was required")
 
-        negative = False
+        negations = 0
         if text.startswith("(") and text.endswith(")"):
-            negative = True
+            negations += 1
             text = text[1:-1].strip()
-        text = text.replace("$", "").replace(",", "").strip()
-        if text.startswith("-"):
-            negative = not negative
-            text = text[1:].strip()
 
-        try:
-            magnitude = Decimal(text)
-        except InvalidOperation as error:
-            raise MoneyError(f"unparseable amount {raw!r}") from error
+        form = _DOCUMENT_AMOUNT.fullmatch(text)
+        if form is None:
+            raise MoneyError(f"unparseable amount {raw!r}")
+        minus_before_dollar, minus_after_dollar, magnitude_text = form.groups()
+        negations += (minus_before_dollar is not None) + (
+            minus_after_dollar is not None
+        )
+        if negations > 1:
+            raise MoneyError(
+                f"amount {raw!r} is negated more than once; refusing to guess the sign"
+            )
 
+        magnitude = Decimal(magnitude_text.replace(",", ""))
         if magnitude != magnitude.quantize(CENT):
             # A bank line with sub-cent precision is a document problem the
             # human must see, not a rounding decision the machine may make.
@@ -111,7 +127,7 @@ class Money:
                 f"amount {raw!r} has sub-cent precision; refusing to round"
             )
 
-        signed = -magnitude if negative else magnitude
+        signed = -magnitude if negations else magnitude
         return cls(signed.quantize(CENT), currency)
 
     @classmethod

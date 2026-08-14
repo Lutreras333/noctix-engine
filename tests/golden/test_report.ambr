@@ -1,0 +1,80 @@
+# serializer version: 1
+# name: test_golden_balanced_report
+  '''
+  # Three-way trust reconciliation — IOLTA ****1234
+  
+  As of 2026-07-31.
+  
+  ## Documents read
+  
+  - Bank statement, IOLTA ****1234, period 2026-07-01 to 2026-07-31: 4 transactions, opening balance $80,000.00, closing balance $87,421.50.
+  - Firm trust books as of 2026-07-31: journal balance $87,421.50; 3 client ledgers, 6 entries.
+  
+  ## The three balances
+  
+  | Balance | Amount |
+  | --- | ---: |
+  | Bank closing balance | $87,421.50 |
+  | Firm trust journal | $87,421.50 |
+  | Sum of client ledgers | $87,421.50 |
+  
+  **BALANCED.** All three balances agree to the cent as of 2026-07-31.
+  
+  ## Leakage review
+  
+  The stale-funds review ran and flagged no client balances.
+  
+  ---
+  
+  Every figure above derives from the documents named; nothing was estimated.
+  
+  '''
+# ---
+# name: test_golden_discrepancy_report
+  '''
+  # Three-way trust reconciliation — IOLTA ****1234
+  
+  As of 2026-07-31.
+  
+  ## Documents read
+  
+  - Bank statement, IOLTA ****1234, period 2026-07-01 to 2026-07-31: 4 transactions, opening balance $81,500.00, closing balance $88,921.50.
+  - Firm trust books as of 2026-07-31: journal balance $88,921.50; 4 client ledgers, 7 entries.
+  
+  ## The three balances
+  
+  | Balance | Amount |
+  | --- | ---: |
+  | Bank closing balance | $88,921.50 |
+  | Firm trust journal | $88,921.50 |
+  | Sum of client ledgers | $88,876.50 |
+  
+  **NOT BALANCED.** The three balances disagree as of 2026-07-31.
+  
+  - Bank closing balance less firm trust journal: $0.00.
+  - Firm trust journal less sum of client ledgers: $45.00.
+  
+  ## Findings
+  
+  Each finding is evidence, not a conclusion: matching is by exact amount only, and a human confirms or refutes each item before it is treated as explained.
+  
+  1. Bank transaction of -$3,000.00 on 2026-07-20 has no same-amount books entry.
+  
+     The bank statement shows -$3,000.00 posted 2026-07-20 (statement line 9, 'CHECK 2102 - CLERK OF COURT AND APPRAISER') with no books entry for the same amount in the period. This is a candidate disbursement not yet recorded in the books. Matching is by exact amount only — the engine does not pair near-miss amounts or dates — so a human must confirm or refute this before it is treated as explained.
+  
+  2. Books entry of -$3,045.00 for client 'Chen, Robert' on 2026-07-20 has no same-amount bank transaction.
+  
+     The trust ledger for 'Chen, Robert' records -$3,045.00 entered 2026-07-20 (disbursement, books line 10, 'Court filing and appraisal costs') with no bank transaction for the same amount in the period. This is a candidate outstanding disbursement that has not cleared. Matching is by exact amount only — the engine does not pair near-miss amounts or dates — so a human must confirm or refute this before it is treated as explained.
+  
+  ## Leakage review
+  
+  Client balances untouched beyond the staleness threshold. Each is a candidate for disbursement or billing review, not a conclusion.
+  
+  1. Client 'Dawes, Elena' has $1,500.00 in trust untouched for 228 days (last activity 2025-12-15) — candidate funds that should have been disbursed or billed; needs human review.
+  
+  ---
+  
+  Every figure above derives from the documents named; nothing was estimated.
+  
+  '''
+# ---

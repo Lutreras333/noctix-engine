@@ -1,0 +1,10 @@
+# NOCTIX trust-books interchange CSV v1
+# as_of=2026-07-31
+# journal_balance=87421.50
+client,date,kind,description,amount
+"Alvarez, Maria — 2024-CP-0119",2026-06-05,deposit,Settlement funds received,50000.00
+Brennan Holdings LLC,2026-06-12,deposit,Retainer deposit,30000.00
+"Chen, Robert — Estate",2026-07-02,deposit,Estate sale proceeds,25000.00
+"Alvarez, Maria — 2024-CP-0119",2026-07-10,disbursement,"Medical lien payoff — Northside Imaging",-12000.00
+Brennan Holdings LLC,2026-07-15,fee_transfer,Invoice 2026-041 earned fees to operating,-2578.50
+"Chen, Robert — Estate",2026-07-20,disbursement,Court filing and appraisal costs,-3045.00

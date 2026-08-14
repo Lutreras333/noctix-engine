@@ -1,0 +1,6 @@
+# period_start=2026-07-01
+# period_end=2026-07-31
+# opening_balance=80,000.00
+# closing_balance=87,421.50
+date,description,amount,balance
+2026-07-02,INCOMING WIRE - CHEN ESTATE SALE PROCEEDS,"25,000.00","104,000.00"
