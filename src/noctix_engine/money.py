@@ -37,6 +37,20 @@ class MoneyError(ValueError):
     """
 
 
+def _require_decimal(value: object) -> Decimal:
+    """Runtime seal for the type annotations dataclasses don't enforce.
+
+    Typed callers can never fail this; untyped callers passing a float
+    are exactly who it exists for.
+    """
+    if not isinstance(value, Decimal):
+        raise MoneyError(
+            f"Money.amount must be a Decimal, got {type(value).__name__} "
+            "— floats are banned from money paths"
+        )
+    return value
+
+
 @dataclass(frozen=True, slots=True)
 class Money:
     """An exact currency amount, always quantized to the cent.
@@ -51,15 +65,7 @@ class Money:
     currency: str = "USD"
 
     def __post_init__(self) -> None:
-        # Dataclasses don't enforce annotations at runtime, and a caller
-        # outside pyright's reach could pass a float. Widen to object so
-        # the type checker permits the runtime seal it thinks redundant.
-        amount_at_runtime: object = self.amount
-        if not isinstance(amount_at_runtime, Decimal):
-            raise MoneyError(
-                f"Money.amount must be a Decimal, got {type(amount_at_runtime).__name__} "
-                "— floats are banned from money paths"
-            )
+        _require_decimal(self.amount)
         if self.currency not in _SUPPORTED_CURRENCIES:
             raise MoneyError(
                 f"unsupported currency {self.currency!r}; engine v1 speaks USD"
