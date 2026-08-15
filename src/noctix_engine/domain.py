@@ -109,12 +109,26 @@ class TrustBooks:
 
 @dataclass(frozen=True, slots=True)
 class ThreeWayBalanced:
-    """All three balances agree to the cent. The good ending."""
+    """All three balances agree to the cent. The good ending.
+
+    The agreement IS the type (creed #5): construction with unequal
+    balances raises, so a false BALANCED verdict is unrepresentable —
+    no downstream honesty gate has to catch what cannot exist.
+    """
 
     as_of: date
     bank_balance: Money
     journal_balance: Money
     ledgers_total: Money
+
+    def __post_init__(self) -> None:
+        if not (self.bank_balance == self.journal_balance == self.ledgers_total):
+            raise ValueError(
+                "ThreeWayBalanced requires all three balances equal; got "
+                f"bank {self.bank_balance}, journal {self.journal_balance}, "
+                f"ledgers {self.ledgers_total} — construct ThreeWayDiscrepancy "
+                "with findings instead"
+            )
 
 
 @dataclass(frozen=True, slots=True)

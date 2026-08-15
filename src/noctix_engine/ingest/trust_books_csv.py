@@ -47,7 +47,12 @@ entries kept in file order. A client ledger whose running balance ever
 goes negative halts the parse: a negative client trust balance means the
 firm disbursed one client's money against another's — the classic
 commingling red flag — and it must never pass silently into a
-reconciliation that could otherwise total clean.
+reconciliation that could otherwise total clean. The check runs in
+CALENDAR order, not file order: a ledger is a time series, and a
+backdated row that drove the client negative in June is a red flag even
+if the exporter appended it last. Same-date rows keep file order — the
+document records no intra-day sequence, so its own order is the only
+honest tiebreak.
 
 This parser proves the file's internal shape only. Whether
 journal_balance equals the sum of the ledgers — and whether either
@@ -99,6 +104,13 @@ def parse_trust_books(path: Path) -> TrustBooks:
         raise TrustBooksError(
             f"cannot read trust-books file {path}: {error}"
         ) from error
+    except UnicodeDecodeError as error:
+        raise TrustBooksError(
+            f"{path.name} is not UTF-8 text (byte {error.object[error.start]:#04x} "
+            f"at position {error.start}) — re-export or re-save the file as "
+            "UTF-8 CSV; a wrong-encoding file is a document problem, not a "
+            "ledger"
+        ) from error
     lines = text.splitlines()
 
     metadata, data_start = _split_at_header(lines, path)
@@ -107,7 +119,6 @@ def parse_trust_books(path: Path) -> TrustBooks:
     # Insertion order of these dicts IS the ledger order contract:
     # first appearance in the file, entries in file order.
     entries_by_client: dict[str, list[TrustLedgerEntry]] = {}
-    running_by_client: dict[str, Money] = {}
     for line_number, line in enumerate(lines[data_start:], start=data_start + 1):
         stripped = line.strip()
         if not stripped:
@@ -119,23 +130,40 @@ def parse_trust_books(path: Path) -> TrustBooks:
                 "file was assembled wrong"
             )
         entry = _parse_entry_row(stripped, line_number, as_of)
-        balance = running_by_client.get(entry.client, Money.zero()) + entry.amount
-        if balance.amount < 0:
-            raise TrustBooksError(
-                f"client {entry.client!r} trust balance goes negative on "
-                f"{entry.entered.isoformat()}: {balance} after line "
-                f"{entry.source_line} — a negative client trust balance means "
-                "money left trust that this client never had, the classic "
-                "commingling red flag; halting for human review"
-            )
-        running_by_client[entry.client] = balance
         entries_by_client.setdefault(entry.client, []).append(entry)
+
+    for client, client_entries in entries_by_client.items():
+        _require_never_negative(client, client_entries)
 
     ledgers = tuple(
         ClientLedger(client=client, entries=tuple(client_entries))
         for client, client_entries in entries_by_client.items()
     )
     return TrustBooks(as_of=as_of, journal_balance=journal_balance, ledgers=ledgers)
+
+
+def _require_never_negative(client: str, entries: list[TrustLedgerEntry]) -> None:
+    """The commingling check, in calendar order.
+
+    A ledger is a time series: the balance that matters is the balance on
+    each date, not the balance in whatever order the export listed rows.
+    A backdated disbursement that drove the client negative in June is a
+    red flag even if the exporter appended it last. `sorted` is stable,
+    so same-date rows keep file order — the document records no intra-day
+    sequence, and inventing one would be a guess (creed #6).
+    """
+    running = Money.zero()
+    for entry in sorted(entries, key=lambda item: item.entered):
+        running = running + entry.amount
+        if running.amount < 0:
+            raise TrustBooksError(
+                f"client {client!r} trust balance goes negative on "
+                f"{entry.entered.isoformat()}: {running} after the entry on "
+                f"line {entry.source_line} (entries replayed in date order) — "
+                "a negative client trust balance means money left trust that "
+                "this client never had, the classic commingling red flag; "
+                "halting for human review"
+            )
 
 
 def _split_at_header(lines: list[str], path: Path) -> tuple[dict[str, str], int]:

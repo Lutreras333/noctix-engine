@@ -346,3 +346,12 @@ def test_generated_statements_round_trip_exactly(
     corrupted[3] = f"# closing_balance={closing + Money.from_cents(1)}"
     with pytest.raises(BankDocumentError, match="does not add up"):
         parse_bank_csv(write_statement(directory, corrupted), account_label=ACCOUNT)
+
+
+def test_non_utf8_file_halts_with_client_readable_reason(tmp_path: Path) -> None:
+    # A wrong-encoding export must halt as a BankDocumentError, never
+    # escape as a raw UnicodeDecodeError.
+    path = tmp_path / "statement.csv"
+    path.write_bytes(b"# account: caf\xe9 export\n")
+    with pytest.raises(BankDocumentError, match="not UTF-8"):
+        parse_bank_csv(path, account_label=ACCOUNT)

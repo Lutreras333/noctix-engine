@@ -28,7 +28,7 @@ from noctix_engine.domain import (
 )
 from noctix_engine.money import Money
 from noctix_engine.report.three_way_report import ReportError, render_three_way_report
-from noctix_engine.verify.leakage import find_stale_client_funds
+from noctix_engine.verify.leakage import LeakageFinding, find_stale_client_funds
 from noctix_engine.verify.three_way import reconcile
 
 PERIOD_START = date(2026, 7, 1)
@@ -465,3 +465,56 @@ def test_golden_discrepancy_report(golden: SnapshotAssertion) -> None:
         result, statement=statement, books=books, leakage=leakage
     )
     assert report == golden
+
+
+# ── the honesty gate covers the leakage section too ────────────────────
+
+
+def test_report_refuses_leakage_for_a_client_absent_from_the_books() -> None:
+    statement, books = _balanced_pair()
+    result = reconcile(statement, books)
+    fabricated = LeakageFinding(
+        client="Nobody, Ever",
+        last_activity=date(2026, 1, 15),
+        balance=Money.parse("12000.00"),
+        days_stale=200,
+        summary="Client 'Nobody, Ever' balance $12,000.00 untouched for 200 days",
+    )
+    with pytest.raises(ReportError, match="no ledger"):
+        render_three_way_report(
+            result, statement=statement, books=books, leakage=(fabricated,)
+        )
+
+
+def test_report_refuses_leakage_whose_balance_disagrees_with_the_ledger() -> None:
+    statement, books = _balanced_pair()
+    result = reconcile(statement, books)
+    ledger = books.ledgers[0]
+    inflated = LeakageFinding(
+        client=ledger.client,
+        last_activity=max(entry.entered for entry in ledger.entries),
+        balance=ledger.balance() + Money.parse("1000.00"),
+        days_stale=200,
+        summary="inflated balance",
+    )
+    with pytest.raises(ReportError, match="balances to"):
+        render_three_way_report(
+            result, statement=statement, books=books, leakage=(inflated,)
+        )
+
+
+def test_report_refuses_leakage_whose_last_activity_disagrees() -> None:
+    statement, books = _balanced_pair()
+    result = reconcile(statement, books)
+    ledger = books.ledgers[0]
+    backdated = LeakageFinding(
+        client=ledger.client,
+        last_activity=date(2020, 1, 1),
+        balance=ledger.balance(),
+        days_stale=2400,
+        summary="backdated activity",
+    )
+    with pytest.raises(ReportError, match="latest entry"):
+        render_three_way_report(
+            result, statement=statement, books=books, leakage=(backdated,)
+        )

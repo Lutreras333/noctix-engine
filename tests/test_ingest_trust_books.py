@@ -148,7 +148,7 @@ def test_negative_dip_halts_even_if_later_deposits_would_cover(
         PREAMBLE
         + "Grant Estate,2026-07-01,deposit,Opening deposit,100.00\n"
         + "Grant Estate,2026-07-10,disbursement,Early payout,-150.00\n"
-        + "Grant Estate,2026-07-11,deposit,Covering deposit,-999.00\n",
+        + "Grant Estate,2026-07-11,deposit,Covering deposit,999.00\n",
     )
     with pytest.raises(TrustBooksError, match="goes negative"):
         parse_trust_books(path)
@@ -359,3 +359,50 @@ def test_wrong_header_refused(tmp_path: Path) -> None:
 def test_missing_file_refused(tmp_path: Path) -> None:
     with pytest.raises(TrustBooksError, match="cannot read trust-books file"):
         parse_trust_books(tmp_path / "does_not_exist.csv")
+
+
+# ── the calendar-order commingling check ───────────────────────────────
+
+
+def test_backdated_dip_halts_even_when_file_order_stays_positive(
+    tmp_path: Path,
+) -> None:
+    # File order: deposit, disbursement, then a BACKDATED disbursement
+    # dated before the deposit. Replayed in file order the balance never
+    # dips; replayed in calendar time the client was negative all June.
+    # A ledger is a time series — the halt must see through the export's
+    # ordering.
+    path = write_books(
+        tmp_path,
+        PREAMBLE
+        + '"Chen, Robert",2026-07-01,deposit,Settlement in,5000.00\n'
+        + '"Chen, Robert",2026-07-10,disbursement,Lien payoff,-1000.00\n'
+        + '"Chen, Robert",2026-06-01,disbursement,Backdated filing fee,-200.00\n',
+    )
+    with pytest.raises(TrustBooksError, match="goes negative on 2026-06-01"):
+        parse_trust_books(path)
+
+
+def test_file_order_dip_that_calendar_order_covers_is_clean(tmp_path: Path) -> None:
+    # The mirror image: the export lists a July disbursement BEFORE the
+    # June deposit that funded it. File order looks negative; calendar
+    # time is clean. Clean books must parse (creed #7: negative space).
+    path = write_books(
+        tmp_path,
+        PREAMBLE
+        + '"Chen, Robert",2026-07-10,disbursement,Lien payoff,-1000.00\n'
+        + '"Chen, Robert",2026-06-01,deposit,Settlement in,5000.00\n',
+    )
+    books = parse_trust_books(path)
+    assert books.ledgers[0].balance() == Money.parse("4000.00")
+
+
+def test_non_utf8_file_halts_with_client_readable_reason(tmp_path: Path) -> None:
+    # cp1252 out of a non-US-locale Excel is routine; the door speaks
+    # TrustBooksError, never a raw UnicodeDecodeError.
+    path = tmp_path / "books.csv"
+    path.write_bytes(
+        PREAMBLE.encode("utf-8") + b'"Caf\xe9 LLC",2026-07-01,deposit,Retainer,50.00\n'
+    )
+    with pytest.raises(TrustBooksError, match="not UTF-8"):
+        parse_trust_books(path)

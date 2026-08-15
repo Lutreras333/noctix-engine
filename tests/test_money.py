@@ -106,6 +106,50 @@ def test_parse_refuses_malformed_comma_grouping(raw: str) -> None:
         Money.parse(raw)
 
 
+@pytest.mark.parametrize("raw", ["٥٠٠.٠٠", "５００.００", "1٨500.00", "١٢٣"])
+def test_parse_refuses_unicode_lookalike_digits(raw: str) -> None:
+    # \d would accept every Unicode digit; the grammar is pinned to [0-9]
+    # because a lookalike digit is the same document oddity as the
+    # lookalike minus: something a human must see, not a normalizer.
+    with pytest.raises(MoneyError, match="unparseable"):
+        Money.parse(raw)
+
+
+# ── the magnitude bound ────────────────────────────────────────────────
+
+
+def test_parse_refuses_amounts_beyond_the_engine_maximum() -> None:
+    # One cent past the bound, and far past it (which would otherwise
+    # surface as a raw decimal.InvalidOperation from quantize).
+    with pytest.raises(MoneyError, match="engine maximum"):
+        Money.parse("1000000000000.00")
+    with pytest.raises(MoneyError, match="engine maximum"):
+        Money.parse("99999999999999999999999999999.00")
+
+
+def test_from_cents_covers_and_refuses_around_the_engine_maximum() -> None:
+    assert str(Money.from_cents(99_999_999_999_999)) == "$999,999,999,999.99"
+    with pytest.raises(MoneyError, match="engine maximum"):
+        Money.from_cents(100_000_000_000_000)
+    with pytest.raises(MoneyError, match="engine maximum"):
+        # Wide enough that Decimal's context would silently round it
+        # before __post_init__ could notice — refused at the door instead.
+        Money.from_cents(10**30)
+
+
+def test_constructor_refuses_beyond_the_engine_maximum() -> None:
+    with pytest.raises(MoneyError, match="engine maximum"):
+        Money(Decimal("9" * 26 + ".99"))
+
+
+def test_arithmetic_past_the_maximum_halts_as_money_error() -> None:
+    # Two legal values whose sum exceeds the bound must halt with the
+    # money path's own error, never a raw decimal.InvalidOperation.
+    top = Money.from_cents(99_999_999_999_999)
+    with pytest.raises(MoneyError, match="engine maximum"):
+        _ = top + top
+
+
 @pytest.mark.parametrize("raw", ["1.234", "$0.005", "(0.001)", "-2.5001"])
 def test_parse_refuses_sub_cent_precision(raw: str) -> None:
     # Sub-cent precision is a document problem for the human, never a

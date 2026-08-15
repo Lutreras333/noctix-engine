@@ -235,3 +235,81 @@ def test_two_runs_in_one_file_are_independent_chains(
     rewrite_payload(record_path, first.run_id, 1, '{"run":"first","index":99}')
     assert record.verify_chain(first.run_id) is False
     assert record.verify_chain(second.run_id) is True
+
+
+# ── the chain commits its own identity and length ──────────────────────
+
+
+def delete_events_from(record_path: Path, run_id: str, sequence: int) -> None:
+    """Truncate a chain's tail behind the record's back."""
+    connection = sqlite3.connect(record_path)
+    try:
+        connection.execute(
+            "DELETE FROM events WHERE run_id = ? AND sequence >= ?",
+            (run_id, sequence),
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+
+def test_truncated_tail_breaks_verification(
+    record: RunRecord, record_path: Path
+) -> None:
+    handle = record.begin(client_label="Firm", engine_version="0.1.0")
+    handle.event("ingest", {"documents": 2})
+    handle.event("report", {"digest": "abc"})
+    handle.close("completed")
+    delete_events_from(record_path, handle.run_id, 1)
+    assert record.verify_chain(handle.run_id) is False
+
+
+def test_emptied_chain_breaks_verification(
+    record: RunRecord, record_path: Path
+) -> None:
+    handle = record.begin(client_label="Firm", engine_version="0.1.0")
+    handle.event("ingest", {"documents": 2})
+    handle.close("completed")
+    delete_events_from(record_path, handle.run_id, 0)
+    assert record.verify_chain(handle.run_id) is False
+
+
+def test_relabeled_events_verify_for_neither_run(
+    record: RunRecord, record_path: Path
+) -> None:
+    # The attack: delete run B's events and re-point run A's validly
+    # chained block at B's id. Genesis is derived from run_id, so the
+    # relabeled chain verifies for neither run.
+    first = record.begin(client_label="Firm", engine_version="0.1.0")
+    first.event("ingest", {"documents": 1})
+    first.close("completed")
+    second = record.begin(client_label="Firm", engine_version="0.1.0")
+    second.event("ingest", {"documents": 9})
+    second.close("completed")
+    connection = sqlite3.connect(record_path)
+    try:
+        connection.execute("DELETE FROM events WHERE run_id = ?", (second.run_id,))
+        connection.execute(
+            "UPDATE events SET run_id = ? WHERE run_id = ?",
+            (second.run_id, first.run_id),
+        )
+        connection.commit()
+    finally:
+        connection.close()
+    assert record.verify_chain(second.run_id) is False
+    assert record.verify_chain(first.run_id) is False
+
+
+def test_verify_chain_of_unknown_run_is_an_error_not_a_verdict(
+    record: RunRecord,
+) -> None:
+    with pytest.raises(RecordError, match="does not exist"):
+        record.verify_chain("never-began")
+
+
+def test_begun_run_with_no_events_verifies_true(record: RunRecord) -> None:
+    # Zero events is a real state (begin, then crash before any event).
+    # True here honestly means "empty and untampered": the committed
+    # count is zero and the committed head is this run's genesis.
+    handle = record.begin(client_label="Firm", engine_version="0.1.0")
+    assert record.verify_chain(handle.run_id) is True

@@ -234,5 +234,14 @@ def parse_bank_pdf(path: Path, *, account_label: str) -> BankStatement:
         ) from error
     try:
         return _parse_open_pdf(pdf, account_label=label, document_name=path.name)
+    except BankDocumentError:
+        raise
+    except Exception as error:
+        # Same rationale as at open: pdfminer's exception taxonomy is not
+        # a stable API, and extraction can fail on a damaged page just as
+        # opening can. The door speaks BankDocumentError or nothing.
+        raise BankDocumentError(
+            f"{path.name}: PDF text extraction failed: {error}"
+        ) from error
     finally:
         pdf.close()

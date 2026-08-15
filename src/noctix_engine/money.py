@@ -17,6 +17,10 @@ Design constraints the reader should know:
   rounding, because silent per-line rounding is how ledgers drift.
 - v1 speaks USD only. The currency field exists so a second currency is a
   parser change, not a type change.
+- Amounts are bounded at ±$999,999,999,999.99. The bound keeps every value
+  far inside Decimal's default 28-digit context, so no money operation can
+  ever surface a raw decimal.InvalidOperation — MoneyError is the only
+  error a money path speaks.
 """
 
 from __future__ import annotations
@@ -33,9 +37,21 @@ _SUPPORTED_CURRENCIES: Final = frozenset({"USD"})
 # after one optional dollar sign, then a magnitude whose commas — if
 # present — are honest 3-digit grouping. Anything outside this grammar
 # refuses to parse; "12,34.56" is a typo a human must see, not $1,234.56.
+# [0-9] and not \d: Python's \d matches every Unicode digit, and a
+# lookalike digit (Arabic-Indic ٥, fullwidth ５) is a document oddity a
+# human must see, not something to silently normalize — the same rule
+# this module already applies to the lookalike minus.
 _DOCUMENT_AMOUNT: Final = re.compile(
-    r"(-)?\$?(-)?((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?)"
+    r"(-)?\$?(-)?((?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\.[0-9]+)?)"
 )
+
+# The largest amount this engine will represent. No trust account holds a
+# trillion dollars; a document claiming one is a document problem. The cap
+# also keeps every Money far inside Decimal's 28-digit context, so
+# arithmetic can never raise a raw decimal.InvalidOperation — the only
+# error a money path may speak is MoneyError.
+_MAX_AMOUNT: Final = Decimal("999999999999.99")
+_MAX_CENTS: Final = 99_999_999_999_999
 
 
 class MoneyError(ValueError):
@@ -79,6 +95,15 @@ class Money:
             raise MoneyError(
                 f"unsupported currency {self.currency!r}; engine v1 speaks USD"
             )
+        # Bound before quantize: quantizing a Decimal wider than the
+        # context would raise raw InvalidOperation, and the bound is the
+        # real rule anyway.
+        if abs(self.amount) > _MAX_AMOUNT:
+            raise MoneyError(
+                f"amount {self.amount} exceeds the engine maximum of "
+                f"${_MAX_AMOUNT:,}; an amount this large is a document "
+                "problem for a human, not a value this engine will carry"
+            )
         if self.amount != self.amount.quantize(CENT):
             raise MoneyError(
                 f"amount {self.amount} is not quantized to the cent; "
@@ -120,6 +145,12 @@ class Money:
             )
 
         magnitude = Decimal(magnitude_text.replace(",", ""))
+        if magnitude > _MAX_AMOUNT:
+            raise MoneyError(
+                f"amount {raw!r} exceeds the engine maximum of "
+                f"${_MAX_AMOUNT:,}; an amount this large is a document "
+                "problem for a human, not a value this engine will carry"
+            )
         if magnitude != magnitude.quantize(CENT):
             # A bank line with sub-cent precision is a document problem the
             # human must see, not a rounding decision the machine may make.
@@ -133,6 +164,13 @@ class Money:
     @classmethod
     def from_cents(cls, cents: int, *, currency: str = "USD") -> Money:
         """Exact construction from an integer number of cents."""
+        if abs(cents) > _MAX_CENTS:
+            # Checked here, not left to __post_init__: multiplying a
+            # wider integer by CENT would silently round inside the
+            # default Decimal context before the constructor ever saw it.
+            raise MoneyError(
+                f"{cents} cents exceeds the engine maximum of ${_MAX_AMOUNT:,}"
+            )
         return cls((Decimal(cents) * CENT).quantize(CENT), currency)
 
     @classmethod

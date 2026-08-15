@@ -202,8 +202,13 @@ def _bank_side_finding(transaction: BankTransaction) -> ReconciliationFinding:
     """Word an unmatched bank line as a candidate, by sign."""
     if transaction.amount.amount > 0:
         candidate = "a candidate deposit not yet credited in the books"
-    else:
+    elif transaction.amount.amount < 0:
         candidate = "a candidate disbursement not yet recorded in the books"
+    else:
+        # Banks print $0.00 memo and fee-notice lines; the books door
+        # refuses zero amounts, so a zero line can never match and must
+        # not be worded as money movement it isn't.
+        candidate = "a zero-amount line (a memo or fee notice, not money movement)"
     return ReconciliationFinding(
         summary=(
             f"Bank transaction of {transaction.amount} on "

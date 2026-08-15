@@ -62,6 +62,8 @@ def render_three_way_report(
     record owns time and stores this report's digest.
     """
     _require_result_matches_documents(result, statement=statement, books=books)
+    if leakage is not None:
+        _require_leakage_matches_books(leakage, books=books)
 
     sections = [
         _header(result, statement=statement, books=books),
@@ -118,6 +120,53 @@ def _require_result_matches_documents(
             f"{books.ledgers_total()} — this result was not computed from "
             "these books"
         )
+    if isinstance(result, ThreeWayBalanced) and not (
+        result.bank_balance == result.journal_balance == result.ledgers_total
+    ):
+        # Unrepresentable since ThreeWayBalanced asserts this at birth —
+        # restated here because this gate's job is to re-derive every
+        # claim the page prints, and BALANCED is the biggest claim on it.
+        raise ReportError(
+            "report refused: a BALANCED verdict whose three balances "
+            f"disagree (bank {result.bank_balance}, journal "
+            f"{result.journal_balance}, ledgers {result.ledgers_total})"
+        )
+
+
+def _require_leakage_matches_books(
+    leakage: tuple[LeakageFinding, ...], *, books: TrustBooks
+) -> None:
+    """Re-derive every leakage citation against the books it will sit under.
+
+    The leakage findings arrive as a separate argument, so nothing ties
+    them to `books` structurally — this gate is that tie. Each finding's
+    client must exist in the cited books, and its balance and last
+    activity must be the ledger's own numbers.
+    """
+    ledgers_by_client = {ledger.client: ledger for ledger in books.ledgers}
+    for finding in leakage:
+        ledger = ledgers_by_client.get(finding.client)
+        if ledger is None or not ledger.entries:
+            raise ReportError(
+                f"report refused: leakage finding names client "
+                f"{finding.client!r}, but the cited books carry no ledger "
+                "with activity under that name — this finding was not "
+                "computed from these books"
+            )
+        if finding.balance != ledger.balance():
+            raise ReportError(
+                f"report refused: leakage finding states a balance of "
+                f"{finding.balance} for client {finding.client!r}, but the "
+                f"cited ledger balances to {ledger.balance()}"
+            )
+        last_activity = max(entry.entered for entry in ledger.entries)
+        if finding.last_activity != last_activity:
+            raise ReportError(
+                f"report refused: leakage finding states last activity "
+                f"{finding.last_activity.isoformat()} for client "
+                f"{finding.client!r}, but the cited ledger's latest entry is "
+                f"{last_activity.isoformat()}"
+            )
 
 
 # ── sections, in page order ────────────────────────────────────────────

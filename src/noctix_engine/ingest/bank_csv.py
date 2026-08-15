@@ -337,6 +337,13 @@ def parse_bank_csv(path: Path, *, account_label: str) -> BankStatement:
         text = path.read_text(encoding="utf-8")
     except OSError as error:
         raise BankDocumentError(f"cannot read bank CSV {path}: {error}") from error
+    except UnicodeDecodeError as error:
+        raise BankDocumentError(
+            f"{path.name} is not UTF-8 text (byte {error.object[error.start]:#04x} "
+            f"at position {error.start}) — re-export or re-save the file as "
+            "UTF-8 CSV; a wrong-encoding file is a document problem, not a "
+            "statement"
+        ) from error
     if not text.strip():
         raise BankDocumentError(
             f"{path.name} is empty where a bank statement was expected"
