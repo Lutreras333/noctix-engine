@@ -8,7 +8,9 @@ data and proves, to the cent, what their books actually say.
 Nothing in this engine can move money. There is no disbursement code, no
 signatory capability, and no write path to any ledger. `act/` produces typed
 *intents* that a human approves elsewhere; in the First Slice it is dormant
-by design.
+by design. Creed 8 binds that layer the day it is built: no intent becomes
+an external write without an idempotency key committed to the run record
+first.
 
 ## The creed
 
