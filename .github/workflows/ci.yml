@@ -1,18 +1,22 @@
-# The four gates the README names, run on every push and pull request so a
-# reader sees them pass without cloning: ruff, the money-path float ban,
-# pyright strict, pytest. Red means stop and look -- never rerun to green.
+# The gates the README names, in the same order, run on every push and pull
+# request so a reader sees them pass without cloning: ruff check and format,
+# the money-path float ban, pyright strict, pytest. Red means stop and look;
+# nothing here reruns to green.
 name: ci
 
 on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   gates:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
         with:
           enable-cache: true
       - name: Install Python 3.13 and the locked environment
@@ -21,6 +25,8 @@ jobs:
           uv sync --locked
       - name: ruff
         run: uv run ruff check .
+      - name: ruff format --check
+        run: uv run ruff format --check .
       - name: money-path gate (creed 4, the float ban)
         run: uv run python tools/check_money_paths.py
       - name: pyright strict

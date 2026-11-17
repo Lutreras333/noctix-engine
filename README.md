@@ -1,5 +1,7 @@
 # NOCTIX ENGINE
 
+[![ci](https://github.com/Lutreras333/noctix-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/Lutreras333/noctix-engine/actions/workflows/ci.yml)
+
 The reusable core of every NOCTIX client system: documents arrive → data gets
 verified → actions are proposed → a record is kept → a human-readable report
 goes out. The First Slice runs this engine read-only against a firm's real
@@ -11,6 +13,29 @@ signatory capability, and no write path to any ledger. `act/` produces typed
 by design. Creed 8 binds that layer the day it is built: no intent becomes
 an external write without an idempotency key committed to the run record
 first.
+
+## Run it
+
+    uv sync
+    uv run pytest                              # 209 tests, 2 golden reports
+    uv run ruff check . && uv run ruff format --check .
+    uv run python tools/check_money_paths.py   # the float ban, enforced by AST
+    uv run pyright                             # strict, zero errors
+
+Python 3.13. Every dependency is pinned in `uv.lock` and justified in
+`DEPENDENCIES.md`. The fixtures under `tests/fixtures` are fictional bank
+statements and trust books, labeled as such inside the files.
+
+## Status
+
+The First Slice is complete: a read-only three-way trust-account
+reconciliation for law firms (bank statement, firm trust journal, sum of
+client ledgers, to the cent, as Florida Rule 5-1.2 requires), with
+hostile-document ingest for CSV and PDF statements, stale-funds leakage
+review, a hash-chained run record, and a client-readable report. `act/`
+is declared and dormant. The production billing system NOCTIX runs today
+lives in a separate repository; this engine is the reusable core for the
+clients that follow it.
 
 ## The creed
 
@@ -62,3 +87,8 @@ Every change passes, in order: `ruff check` and `ruff format --check`,
 
 Lucas reviews every diff that touches `money.py`, `verify/`, or `act/`
 before it merges, even when every gate is green.
+
+## License
+
+Source-available for reading and evaluation. All rights reserved; see
+`LICENSE`.
