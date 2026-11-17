@@ -76,10 +76,10 @@ def test_sample_fixture_entries_carry_proven_fields() -> None:
     assert deposit.entered == date(2026, 6, 5)
     assert deposit.amount == Money.parse("50000.00")
     assert deposit.description == "Settlement funds received"
-    assert deposit.source_line == 5  # first row after 3 comments + header
+    assert deposit.source_line == 6  # first row after 4 comments + header
     assert disbursement.kind is TrustEntryKind.DISBURSEMENT
     assert disbursement.amount == Money.parse("-12000.00")
-    assert disbursement.source_line == 8
+    assert disbursement.source_line == 9
 
     brennan = books.ledgers[1]
     assert brennan.entries[1].kind is TrustEntryKind.FEE_TRANSFER
