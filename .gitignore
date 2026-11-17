@@ -4,3 +4,13 @@ __pycache__/
 .ruff_cache/
 .hypothesis/
 *.egg-info/
+# engine output and local secrets
+*.sqlite
+*.sqlite3
+*.db
+.env
+.env.*
+dist/
+build/
+.coverage
+.mypy_cache/

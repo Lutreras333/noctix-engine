@@ -4,8 +4,9 @@
 
 The reusable core of every NOCTIX client system: documents arrive → data gets
 verified → actions are proposed → a record is kept → a human-readable report
-goes out. The First Slice runs this engine read-only against a firm's real
-data and proves, to the cent, what their books actually say.
+goes out. The First Slice is built to run read-only against a firm's own
+exports and prove, to the cent, what the books say. This repository ships
+the engine and its fictional fixtures; no client data is in it.
 
 Nothing in this engine can move money. There is no disbursement code, no
 signatory capability, and no write path to any ledger. `act/` produces typed
@@ -87,6 +88,13 @@ Every change passes, in order: `ruff check` and `ruff format --check`,
 
 Lucas reviews every diff that touches `money.py`, `verify/`, or `act/`
 before it merges, even when every gate is green.
+
+## How this was built
+
+Written in August 2026 with Claude Code as a pair programmer, under the
+creed above; the commit trailers record the co-authorship. Every diff that
+touches `money.py`, `verify/` or `act/` was reviewed by Lucas before it
+merged, and every change passed the gates above.
 
 ## License
 

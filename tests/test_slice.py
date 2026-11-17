@@ -55,7 +55,7 @@ def test_balanced_slice_end_to_end(tmp_path: Path) -> None:
         trust_books=FIXTURES / "sample_trust_books.csv",
         account_label="IOLTA ****1234",
         record_path=record_path,
-        client_label="Acevedo & Partners",
+        client_label="Northgate Family Law",
     )
 
     assert isinstance(outcome.result, ThreeWayBalanced)
@@ -78,7 +78,7 @@ def test_balanced_slice_records_every_stage_with_evidence(tmp_path: Path) -> Non
         trust_books=FIXTURES / "sample_trust_books.csv",
         account_label="IOLTA ****1234",
         record_path=record_path,
-        client_label="Acevedo & Partners",
+        client_label="Northgate Family Law",
     )
 
     record = RunRecord(record_path)
@@ -138,7 +138,7 @@ def test_outcome_is_a_frozen_value(tmp_path: Path) -> None:
         trust_books=FIXTURES / "sample_trust_books.csv",
         account_label="IOLTA ****1234",
         record_path=tmp_path / "record.sqlite",
-        client_label="Acevedo & Partners",
+        client_label="Northgate Family Law",
     )
     with pytest.raises(dataclasses.FrozenInstanceError):
         # The type checker refuses this line statically (that is half
@@ -159,7 +159,7 @@ def test_discrepancy_is_a_completed_run_whose_report_shows_findings(
         trust_books=FIXTURES / "slice_trust_books_perturbed.csv",
         account_label="IOLTA ****1234",
         record_path=record_path,
-        client_label="Acevedo & Partners",
+        client_label="Northgate Family Law",
     )
 
     assert isinstance(outcome.result, ThreeWayDiscrepancy)
@@ -200,7 +200,7 @@ def test_pdf_bank_source_runs_the_slice_end_to_end(tmp_path: Path) -> None:
         trust_books=FIXTURES / "sample_trust_books.csv",
         account_label="IOLTA ****0000",
         record_path=record_path,
-        client_label="Acevedo & Partners",
+        client_label="Northgate Family Law",
     )
     assert isinstance(outcome.result, ThreeWayDiscrepancy)
     assert outcome.record_verified is True
@@ -227,7 +227,7 @@ def test_both_bank_sources_refuse_before_any_run_begins(tmp_path: Path) -> None:
             trust_books=FIXTURES / "sample_trust_books.csv",
             account_label="IOLTA ****1234",
             record_path=record_path,
-            client_label="Acevedo & Partners",
+            client_label="Northgate Family Law",
         )
     assert "exactly one bank source" in str(caught.value)
     # Refused before a run began: no record file was even created.
@@ -243,7 +243,7 @@ def test_no_bank_source_refuses_before_any_run_begins(tmp_path: Path) -> None:
             trust_books=FIXTURES / "sample_trust_books.csv",
             account_label="IOLTA ****1234",
             record_path=record_path,
-            client_label="Acevedo & Partners",
+            client_label="Northgate Family Law",
         )
     assert "exactly one bank source" in str(caught.value)
     assert not record_path.exists()
@@ -261,7 +261,7 @@ def test_broken_bank_document_halts_with_the_reason_recorded(tmp_path: Path) -> 
             trust_books=FIXTURES / "sample_trust_books.csv",
             account_label="IOLTA ****1234",
             record_path=record_path,
-            client_label="Acevedo & Partners",
+            client_label="Northgate Family Law",
         )
     # SliceError carries the parser's original client-readable words.
     message = str(caught.value)
@@ -295,7 +295,7 @@ def test_unreadable_books_halt_after_the_bank_ingest_was_recorded(
             trust_books=tmp_path / "no_such_books.csv",
             account_label="IOLTA ****1234",
             record_path=record_path,
-            client_label="Acevedo & Partners",
+            client_label="Northgate Family Law",
         )
     assert "cannot read trust-books file" in str(caught.value)
 

@@ -1,4 +1,5 @@
 # NOCTIX trust-books interchange CSV v1
+# Fictional test data: no real firm, client, matter, or transaction.
 # as_of=2026-07-31
 # journal_balance=87421.50
 client,date,kind,description,amount

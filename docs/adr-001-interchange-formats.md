@@ -25,7 +25,7 @@ script per source, kept in that client's overlay repo), not engine code.
   engine change.
 - The interchange documents are part of handover: a firm can see exactly
   what data the engine reads — and produce it themselves if they ever
-  leave (the "yours when it's done" promise).
-- PDF parsing is the deliberate exception (bank PDFs are the moat
-  workload); each supported statement layout earns its own parser with
+  leave.
+- PDF parsing is the deliberate exception (bank PDFs are the hardest
+  extraction workload); each supported statement layout earns its own parser with
   its own golden fixtures.

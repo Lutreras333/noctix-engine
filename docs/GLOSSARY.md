@@ -21,7 +21,7 @@ the other way around.
   append-only.
 - **record** — the hash-chained SQLite file of runs and events; the
   proof surface (creed #9).
-- **slice** — the First Slice: the read-only proof engagement; also the
+- **slice** — the First Slice: the read-only proof run; also the
   orchestrator module that performs it.
 - **intent** — a typed, recorded proposal to act externally. In the
   First Slice, intents are declared and never executed.

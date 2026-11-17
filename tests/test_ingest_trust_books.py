@@ -7,9 +7,7 @@ land in run records read by non-programmers.
 
 `sample_trust_books.csv` is the coordinated fixture: a fictional July
 2026 where books and bank AGREE. Its journal_balance and ledgers total
-are both 87,421.50 — the bank fixture's closing balance. (The bank
-agent's fixture was not yet committed when this was written; 87,421.50
-is the agreed closing balance from the assignment.)
+are both 87,421.50 — the bank fixture's closing balance.
 """
 
 from __future__ import annotations
